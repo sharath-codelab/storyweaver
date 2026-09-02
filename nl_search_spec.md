@@ -26,11 +26,12 @@ The public response has exactly one field, named `response`:
 {"response":"• The Sparrow and The Fruit — You may enjoy this lively animal adventure because you asked for a funny animal story."}
 ```
 
-`response` contains one or two child-friendly recommendation lines. Each names a
-real selected story and explains in simple language why it matches the child's
-request. Contributor details, counts, page ranges, filter state, and reranking
-diagnostics remain internal; never expose vector values, secrets, prompts, or
-model reasoning.
+`response` starts with one short, welcoming librarian-style sentence that
+acknowledges the child's request, followed by one or two child-friendly
+recommendation lines. Each names a real selected story and explains in simple
+language why it matches the child's request. Contributor details, counts, page
+ranges, filter state, and reranking diagnostics remain internal; never expose
+vector values, secrets, prompts, or model reasoning.
 
 ## Request flow
 

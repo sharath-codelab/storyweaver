@@ -50,8 +50,9 @@ class GroqService:
         ]
         prompt = (
             "You are a warm children's librarian. Choose no more than " + str(limit) +
-            " stories only from the supplied candidates. Return JSON with selections. "
-            "Reasons must be short, child-friendly, and explain why the story fits the child's request. "
+            " stories only from the supplied candidates. Return JSON with a one-sentence cheerful introduction and selections. "
+            "The introduction should warmly acknowledge what the child asked for. Reasons must be warm, child-friendly, "
+            "and explain why the story fits the child's request. "
             "Ground every reason only in the supplied query, candidate metadata, and snippets. "
             f"User request: {query}\nAllowed IDs: {allowed}\nCandidates: {json.dumps(candidate_data, ensure_ascii=False)}"
         )

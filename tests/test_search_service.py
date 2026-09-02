@@ -17,7 +17,7 @@ class FakeGroq:
         return QueryAnalysis(search_query=query, length_preference="short", length_confidence="high")
 
     def write(self, query, candidates, limit):
-        return WritingResult(selections=[WritingChoice(story_id="story", why_recommended="It is funny.")])
+        return WritingResult(introduction="What a fun story idea!", selections=[WritingChoice(story_id="story", why_recommended="It is funny.")])
 
 
 class FakePinecone:
@@ -37,6 +37,7 @@ class SearchServiceTests(unittest.TestCase):
         pinecone = FakePinecone()
         service = RecommendationService(FakeGroq(), pinecone, 60, 20)
         result = service.recommend(RecommendationRequest(input="A short funny story"))
+        self.assertIn("What a fun story idea!", result.response)
         self.assertIn("A Story", result.response)
         self.assertIn("It is funny.", result.response)
         self.assertIn("$and", pinecone.filters[0])

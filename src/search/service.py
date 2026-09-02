@@ -41,10 +41,11 @@ class RecommendationService:
         except Exception:
             pass
         top_five = candidates[:5]
-        recommendations = self._write(request.input, top_five, 2)
-        if not recommendations:
-            return RecommendationResponse(response="Mujhe abhi aapke liye sahi kahani nahi mili. Kripya ek aur idea bataiye!")
-        return RecommendationResponse(response="\n".join(f"• {item.line}" for item in recommendations))
+        rendered = self._write(request.input, top_five, 2)
+        if rendered is None:
+            return RecommendationResponse(response="Mujhe abhi aapke liye sahi kahani nahi mili, dost. Kripya ek aur kahani ka idea bataiye!")
+        introduction, lines = rendered
+        return RecommendationResponse(response=introduction + "\n\n" + "\n".join(f"• {item.line}" for item in lines))
 
     def _analysis(self, query: str) -> tuple[QueryAnalysis, bool]:
         try:
@@ -67,7 +68,7 @@ class RecommendationService:
 
     def _write(self, query: str, candidates: list, limit: int):
         if not candidates:
-            return []
+            return None
         try:
             written = self.groq.write(query, candidates, limit)
             by_id = {item.story_id: item for item in candidates}
@@ -79,7 +80,10 @@ class RecommendationService:
                 if len(selected) == limit:
                     break
             if selected:
-                return selected
+                return written.introduction, selected
         except Exception:
             pass
-        return [recommendation_from_candidate(item) for item in candidates[:limit]]
+        return (
+            "What a lovely idea! I found these stories that may be just right for you:",
+            [recommendation_from_candidate(item) for item in candidates[:limit]],
+        )
