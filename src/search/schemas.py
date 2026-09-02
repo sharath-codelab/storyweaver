@@ -12,11 +12,9 @@ LengthPreference = Literal["very_short", "short", "medium", "long"]
 
 
 class RecommendationRequest(BaseModel):
-    query: str = Field(min_length=1, max_length=500)
-    language: str = Field(default="en", min_length=2, max_length=16)
-    limit: Literal[1, 2] = 2
+    input: str = Field(min_length=1, max_length=500)
 
-    @field_validator("query", "language")
+    @field_validator("input")
     @classmethod
     def strip_text(cls, value: str) -> str:
         result = value.strip()
@@ -52,7 +50,7 @@ class Recommendation(BaseModel):
 
 
 class RecommendationResponse(BaseModel):
-    recommendations: list[Recommendation]
+    output: str
 
 
 class ChunkMatch(BaseModel):

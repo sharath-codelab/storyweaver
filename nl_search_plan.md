@@ -103,18 +103,17 @@ Create Pydantic models:
 
 ```python
 class RecommendationRequest(BaseModel):
-    query: str = Field(min_length=1, max_length=500)
-    language: str = "en"
-    limit: Literal[1, 2] = 2
+    input: str = Field(min_length=1, max_length=500)
 ```
 
-Trim query whitespace in a validator and reject whitespace-only input.
+Trim input whitespace in a validator and reject whitespace-only input. Use `en`
+as the initial fixed metadata filter.
 
 Define a minimal public response model:
 
-- `Recommendation`: title and one child-friendly line explaining why the story
-  fits the child's request.
-- `RecommendationResponse`: a list of up to two recommendations.
+- `RecommendationResponse`: an `output` string containing one or two
+  child-friendly lines. Each line names a story and explains why it fits the
+  child's request.
 
 Keep IDs, credits, counts, page ranges, scores, filter state, and fallback
 diagnostics internal to the service.
@@ -156,7 +155,7 @@ Prompt Groq to return JSON only. The prompt must say:
 5. use the query language and preserve meaningful search terms.
 
 Validate the provider response. If it fails, times out, or violates the schema,
-fall back to `search_query=request.query` with no age or length preference.
+fall back to `search_query=request.input` with no age or length preference.
 
 **Done when:** mocked valid, malformed, timeout, and unsupported-age responses
 all produce deterministic validated analysis data.
@@ -311,7 +310,7 @@ Run locally on port 8000 and verify:
 ```bash
 curl -X POST http://127.0.0.1:8000/v1/story-recommendations \
   -H 'Content-Type: application/json' \
-  -d '{"query":"I am seven and want a short funny animal story"}'
+  -d '{"input":"I am seven and want a short funny animal story"}'
 ```
 
 ## Release checklist

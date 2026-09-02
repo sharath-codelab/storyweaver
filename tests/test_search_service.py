@@ -36,9 +36,9 @@ class SearchServiceTests(unittest.TestCase):
     def test_returns_grounded_recommendation(self):
         pinecone = FakePinecone()
         service = RecommendationService(FakeGroq(), pinecone, 60, 20)
-        result = service.recommend(RecommendationRequest(query="A short funny story"))
-        self.assertEqual(result.recommendations[0].title, "A Story")
-        self.assertIn("It is funny.", result.recommendations[0].line)
+        result = service.recommend(RecommendationRequest(input="A short funny story"))
+        self.assertIn("A Story", result.output)
+        self.assertIn("It is funny.", result.output)
         self.assertIn("$and", pinecone.filters[0])
 
 
