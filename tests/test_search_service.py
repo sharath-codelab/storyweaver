@@ -37,8 +37,8 @@ class SearchServiceTests(unittest.TestCase):
         pinecone = FakePinecone()
         service = RecommendationService(FakeGroq(), pinecone, 60, 20)
         result = service.recommend(RecommendationRequest(input="A short funny story"))
-        self.assertIn("A Story", result.output)
-        self.assertIn("It is funny.", result.output)
+        self.assertIn("A Story", result.response)
+        self.assertIn("It is funny.", result.response)
         self.assertIn("$and", pinecone.filters[0])
 
 

@@ -50,7 +50,7 @@ class Recommendation(BaseModel):
 
 
 class RecommendationResponse(BaseModel):
-    output: str
+    response: str
 
 
 class ChunkMatch(BaseModel):

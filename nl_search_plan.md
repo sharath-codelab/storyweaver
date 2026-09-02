@@ -111,7 +111,7 @@ as the initial fixed metadata filter.
 
 Define a minimal public response model:
 
-- `RecommendationResponse`: an `output` string containing one or two
+- `RecommendationResponse`: a `response` string containing one or two
   child-friendly lines. Each line names a story and explains why it fits the
   child's request.
 

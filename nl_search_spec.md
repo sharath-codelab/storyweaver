@@ -20,13 +20,13 @@ POST /v1/story-recommendations
 
 - `input`: required, trimmed, 1–500-character user request.
 
-The public response has exactly one field:
+The public response has exactly one field, named `response`:
 
 ```json
-{"output":"• The Sparrow and The Fruit — You may enjoy this lively animal adventure because you asked for a funny animal story."}
+{"response":"• The Sparrow and The Fruit — You may enjoy this lively animal adventure because you asked for a funny animal story."}
 ```
 
-`output` contains one or two child-friendly recommendation lines. Each names a
+`response` contains one or two child-friendly recommendation lines. Each names a
 real selected story and explains in simple language why it matches the child's
 request. Contributor details, counts, page ranges, filter state, and reranking
 diagnostics remain internal; never expose vector values, secrets, prompts, or

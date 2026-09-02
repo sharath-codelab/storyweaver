@@ -43,8 +43,8 @@ class RecommendationService:
         top_five = candidates[:5]
         recommendations = self._write(request.input, top_five, 2)
         if not recommendations:
-            return RecommendationResponse(output="Mujhe abhi aapke liye sahi kahani nahi mili. Kripya ek aur idea bataiye!")
-        return RecommendationResponse(output="\n".join(f"• {item.line}" for item in recommendations))
+            return RecommendationResponse(response="Mujhe abhi aapke liye sahi kahani nahi mili. Kripya ek aur idea bataiye!")
+        return RecommendationResponse(response="\n".join(f"• {item.line}" for item in recommendations))
 
     def _analysis(self, query: str) -> tuple[QueryAnalysis, bool]:
         try:
