@@ -1,5 +1,6 @@
 .env
 .local/
+stories/
 __pycache__/
 *.py[cod]
 .pytest_cache/

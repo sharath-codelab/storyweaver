@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: swv2-story-search
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m src.search
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: PINECONE_CLOUD
+        value: aws
+      - key: PINECONE_REGION
+        value: us-east-1
+      - key: PINECONE_INDEX_NAME
+        value: swv2
+      - key: PINECONE_NAMESPACE
+        value: stories
+      - key: DENSE_EMBEDDING_MODEL
+        value: llama-text-embed-v2
+      - key: DENSE_EMBEDDING_DIMENSION
+        value: "1024"
+      - key: SPARSE_EMBEDDING_MODEL
+        value: pinecone-sparse-english-v0
+      - key: GROQ_ANALYSIS_MODEL
+        value: openai/gpt-oss-20b
+      - key: GROQ_WRITING_MODEL
+        value: openai/gpt-oss-20b
+      - key: PINECONE_RERANK_MODEL
+        value: bge-reranker-v2-m3
