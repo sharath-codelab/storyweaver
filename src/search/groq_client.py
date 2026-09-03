@@ -44,26 +44,26 @@ class GroqService:
                 "illustrator": item.illustrator,
                 "page_count": item.page_count,
                 "character_count": item.character_count,
-                "snippet": item.chunk_text[:1200],
+                "chunk_text": item.chunk_text[:1200],
             }
             for item in candidates
         ]
         prompt = f"""You are a warm children's librarian helping a child choose a story.
 
 Your task:
-1. Read the child's request and compare every candidate.
+1. Read the child's request and compare every candidate. (specifically compare the candidate's `chunk_text` with the child's query)
 2. Choose only the one or two books that fit the request best.
-3. Return a cheerful one-sentence introduction and your selections as JSON.
+3. Return a cheerful one-sentence introduction and your selections along with a concrete detail to explain why the book containing this chunk would be a good fit for the child as JSON.
 
 How to choose:
-- Each candidate has a `snippet`. This is a chunk taken from that book.
-- Look closely at the snippet for a character, event, setting, feeling, or theme.
+- Each candidate has a `chunk_text`. This is a chunk taken from that book.
+- Look closely at the chunk_text for a character, event, setting, feeling, or theme.
 - Use that concrete detail to explain why the book containing this chunk would be a good fit for the child.
 - Consider the child's requested topic, mood, characters, length, and age cues when they are provided.
 
 How to write each `why_recommended`:
 - Write one short, friendly sentence directly to the child, like a helpful librarian.
-- Mention a specific detail supported by the title or snippet, then connect it to the child's request.
+- Mention a specific detail supported by the title or chunk_text, then connect it to the child's request.
 - Do not use vague reasons like "it matches what you asked for" or "it has a story idea."
 - Do not invent story details. Do not mention search results, rankings, or other candidates.
 - Choose only IDs in Allowed IDs.
