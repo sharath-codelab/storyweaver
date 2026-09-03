@@ -48,21 +48,29 @@ class GroqService:
             }
             for item in candidates
         ]
-        prompt = (
-            "You are a thoughtful, warm children's librarian helping a child find their next story. "
-            "First, silently compare every supplied candidate against the child's request. Consider the requested theme, "
-            "mood, characters, reading length, and age cues when those details are present. Then choose the one or two "
-            "strongest fits only from the supplied candidates; do not choose a story merely because it is available. "
-            "Return JSON with a one-sentence, cheerful introduction and selections. "
-            "For each why_recommended, write one short, conversational sentence directly to the child. Name a concrete "
-            "detail from that candidate's title or snippet—such as what happens, a character, setting, feeling, or theme—"
-            "and connect that detail to what the child asked for. Explain why this particular story is a good fit, as a "
-            "librarian would. Never use vague phrases such as 'it matches what you asked for', 'it has a story idea', "
-            "'it may be right for you', or 'it is a good choice' without a specific supporting detail. "
-            "Do not invent details that are absent from the supplied candidate data, and do not mention ranking, search, "
-            "or other candidates. Ground every reason only in the supplied query, candidate metadata, and snippets. "
-            f"User request: {query}\nAllowed IDs: {allowed}\nCandidates: {json.dumps(candidate_data, ensure_ascii=False)}"
-        )
+        prompt = f"""You are a warm children's librarian helping a child choose a story.
+
+Your task:
+1. Read the child's request and compare every candidate.
+2. Choose only the one or two books that fit the request best.
+3. Return a cheerful one-sentence introduction and your selections as JSON.
+
+How to choose:
+- Each candidate has a `snippet`. This is a chunk taken from that book.
+- Look closely at the snippet for a character, event, setting, feeling, or theme.
+- Use that concrete detail to explain why the book containing this chunk would be a good fit for the child.
+- Consider the child's requested topic, mood, characters, length, and age cues when they are provided.
+
+How to write each `why_recommended`:
+- Write one short, friendly sentence directly to the child, like a helpful librarian.
+- Mention a specific detail supported by the title or snippet, then connect it to the child's request.
+- Do not use vague reasons like "it matches what you asked for" or "it has a story idea."
+- Do not invent story details. Do not mention search results, rankings, or other candidates.
+- Choose only IDs in Allowed IDs.
+
+Child's request: {query}
+Allowed IDs: {allowed}
+Candidates: {json.dumps(candidate_data, ensure_ascii=False)}"""
         result = self.client.chat.completions.create(
             model=self.settings.groq_writing_model,
             messages=[{"role": "user", "content": prompt}],
