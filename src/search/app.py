@@ -6,9 +6,10 @@ import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.concurrency import run_in_threadpool
 
+from .calibrate_client import CalibrateTraceClient
 from .config import SearchSettings
 from .groq_client import GroqService
 from .pinecone_client import PineconeSearch
@@ -25,6 +26,7 @@ def create_app(project_root: Path | None = None) -> FastAPI:
         app.state.service = RecommendationService(
             GroqService(settings), PineconeSearch(settings), settings.rrf_k, settings.rerank_candidate_count
         )
+        app.state.trace_client = CalibrateTraceClient.from_settings(settings)
         yield
 
     app = FastAPI(title="SWV2 Story Recommendations", version="0.1.0", lifespan=lifespan)
@@ -40,12 +42,30 @@ def create_app(project_root: Path | None = None) -> FastAPI:
         return {"status": "ok"}
 
     @app.post("/v1/story-recommendations", response_model=RecommendationResponse)
-    async def recommend(request: RecommendationRequest, raw_request: Request) -> RecommendationResponse:
-        return await run_in_threadpool(raw_request.app.state.service.recommend, request)
+    async def recommend(
+        request: RecommendationRequest, raw_request: Request, background_tasks: BackgroundTasks,
+    ) -> RecommendationResponse:
+        debug_result = await run_in_threadpool(raw_request.app.state.service.recommend_debug, request)
+        _queue_trace(background_tasks, raw_request.app.state.trace_client, request.input, debug_result)
+        return RecommendationResponse(response=debug_result.response.message)
 
     @app.post("/v1/story-recommendations/debug", response_model=DebugRecommendationResponse)
-    async def recommend_debug(request: RecommendationRequest, raw_request: Request) -> DebugRecommendationResponse:
+    async def recommend_debug(
+        request: RecommendationRequest, raw_request: Request, background_tasks: BackgroundTasks,
+    ) -> DebugRecommendationResponse:
         """Unprotected diagnostic route; response includes complete rerank story text."""
-        return await run_in_threadpool(raw_request.app.state.service.recommend_debug, request)
+        debug_result = await run_in_threadpool(raw_request.app.state.service.recommend_debug, request)
+        _queue_trace(background_tasks, raw_request.app.state.trace_client, request.input, debug_result)
+        return debug_result
 
     return app
+
+
+def _queue_trace(
+    background_tasks: BackgroundTasks,
+    trace_client: CalibrateTraceClient | None,
+    user_input: str,
+    debug_result: DebugRecommendationResponse,
+) -> None:
+    if trace_client is not None:
+        background_tasks.add_task(trace_client.send, user_input, debug_result.model_dump(mode="json"))

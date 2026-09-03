@@ -16,6 +16,13 @@ def _positive_int(name: str, default: int) -> int:
     return value
 
 
+def _positive_float(name: str, default: float) -> float:
+    value = float(os.getenv(name, str(default)))
+    if value <= 0:
+        raise ConfigurationError(f"{name} must be greater than zero")
+    return value
+
+
 @dataclass(frozen=True)
 class SearchSettings:
     ingestion: Settings
@@ -27,6 +34,9 @@ class SearchSettings:
     sparse_top_k: int
     rerank_candidate_count: int
     rrf_k: int
+    calibrate_api_key: str | None
+    calibrate_agent_id: str | None
+    calibrate_trace_timeout_seconds: float
 
     @classmethod
     def from_environment(cls, project_root: Path) -> "SearchSettings":
@@ -44,4 +54,7 @@ class SearchSettings:
             sparse_top_k=_positive_int("SPARSE_TOP_K", 50),
             rerank_candidate_count=_positive_int("RERANK_CANDIDATE_COUNT", 20),
             rrf_k=_positive_int("RRF_K", 60),
+            calibrate_api_key=os.getenv("CALIBRATE_API_KEY", "").strip() or None,
+            calibrate_agent_id=os.getenv("CALIBRATE_AGENT_ID", "").strip() or None,
+            calibrate_trace_timeout_seconds=_positive_float("CALIBRATE_TRACE_TIMEOUT_SECONDS", 2.0),
         )
