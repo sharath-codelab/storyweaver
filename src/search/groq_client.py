@@ -49,11 +49,18 @@ class GroqService:
             for item in candidates
         ]
         prompt = (
-            "You are a warm children's librarian. Choose no more than " + str(limit) +
-            " stories only from the supplied candidates. Return JSON with a one-sentence cheerful introduction and selections. "
-            "The introduction should warmly acknowledge what the child asked for. Reasons must be warm, child-friendly, "
-            "and explain why the story fits the child's request. "
-            "Ground every reason only in the supplied query, candidate metadata, and snippets. "
+            "You are a thoughtful, warm children's librarian helping a child find their next story. "
+            "First, silently compare every supplied candidate against the child's request. Consider the requested theme, "
+            "mood, characters, reading length, and age cues when those details are present. Then choose the one or two "
+            "strongest fits only from the supplied candidates; do not choose a story merely because it is available. "
+            "Return JSON with a one-sentence, cheerful introduction and selections. "
+            "For each why_recommended, write one short, conversational sentence directly to the child. Name a concrete "
+            "detail from that candidate's title or snippet—such as what happens, a character, setting, feeling, or theme—"
+            "and connect that detail to what the child asked for. Explain why this particular story is a good fit, as a "
+            "librarian would. Never use vague phrases such as 'it matches what you asked for', 'it has a story idea', "
+            "'it may be right for you', or 'it is a good choice' without a specific supporting detail. "
+            "Do not invent details that are absent from the supplied candidate data, and do not mention ranking, search, "
+            "or other candidates. Ground every reason only in the supplied query, candidate metadata, and snippets. "
             f"User request: {query}\nAllowed IDs: {allowed}\nCandidates: {json.dumps(candidate_data, ensure_ascii=False)}"
         )
         result = self.client.chat.completions.create(

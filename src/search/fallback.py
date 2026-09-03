@@ -6,7 +6,7 @@ from .schemas import Recommendation, StoryCandidate
 
 
 def recommendation_from_candidate(candidate: StoryCandidate, reason: str | None = None) -> Recommendation:
-    explanation = reason or "It has a story idea that matches what you asked for."
+    explanation = reason or "Its story sounds like it could make a lovely next read for you."
     return Recommendation(
         title=candidate.title,
         line=f"{candidate.title} — {explanation}",
