@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from src.ingest.embeddings import _get
+from src.ingest.parse_stories import CorpusValidationError, parse_story
 from src.ingest.pinecone_store import PineconeStore
 
 from .config import SearchSettings
@@ -18,6 +19,7 @@ class PineconeSearch:
         self.store = PineconeStore(settings.ingestion)
         self.index = self.store.connect_existing()
         self.client = self.store.client
+        self._story_text_cache: dict[str, str | None] = {}
 
     def retrieve(self, query: str, metadata_filter: dict | None) -> tuple[list[ChunkMatch], list[ChunkMatch]]:
         dense = list(self.client.inference.embed(
@@ -42,8 +44,10 @@ class PineconeSearch:
                                             namespace=self.settings.ingestion.pinecone_namespace)
             return self._matches(dense_future.result(), "dense"), self._matches(sparse_future.result(), "sparse")
 
-    def rerank(self, query: str, candidates: list[StoryCandidate]) -> dict[str, float]:
-        documents = [{"id": candidate.story_id, "text": self._rerank_text(candidate)} for candidate in candidates]
+    def rerank(
+        self, query: str, candidates: list[StoryCandidate], documents: list[dict[str, str]] | None = None,
+    ) -> dict[str, float]:
+        documents = documents if documents is not None else self.rerank_documents(candidates)
         result = self.client.inference.rerank(
             model=self.settings.pinecone_rerank_model,
             query=query,
@@ -59,6 +63,17 @@ class PineconeSearch:
             scores[documents[index]["id"]] = score
         return scores
 
+    def rerank_documents(self, candidates: list[StoryCandidate]) -> list[dict[str, str]]:
+        """Build the exact documents supplied to the reranker.
+
+        Kept public so the debug endpoint can report the actual rerank input
+        without changing the production reranking behavior.
+        """
+        return [
+            {"id": candidate.story_id, "text": self._rerank_text(candidate, self._full_story_text(candidate.story_id))}
+            for candidate in candidates
+        ]
+
     @staticmethod
     def _matches(response: Any, source: str) -> list[ChunkMatch]:
         raw_matches = _get(response, "matches")
@@ -68,15 +83,36 @@ class PineconeSearch:
             for rank, match in enumerate(raw_matches, start=1)
         ]
 
+    def _full_story_text(self, story_id: str) -> str | None:
+        """Load canonical story content for a rerank candidate, caching misses too."""
+        if story_id in self._story_text_cache:
+            return self._story_text_cache[story_id]
+
+        stories_dir = self.settings.ingestion.stories_dir.resolve()
+        story_path = (stories_dir / f"{story_id}.md").resolve()
+        content: str | None = None
+        # story_id originates in indexed metadata, so keep it from escaping the corpus
+        # even if an invalid record is present in the index.
+        if story_path.parent == stories_dir:
+            try:
+                story = parse_story(story_path)
+                if story.story_id == story_id:
+                    content = "\n\n".join(story.pages)
+            except (CorpusValidationError, OSError):
+                # Preserve search availability when the source corpus and index drift.
+                # The retrieved chunk remains a grounded fallback below.
+                pass
+        self._story_text_cache[story_id] = content
+        return content
+
     @staticmethod
-    def _rerank_text(candidate: StoryCandidate) -> str:
-        # Conservatively restrict content before the reranker performs its own model-specific truncation.
-        content = candidate.chunk_text[:6000]
-        if "." in content:
-            content = content.rsplit(".", 1)[0] + "."
+    def _rerank_text(candidate: StoryCandidate, full_story_text: str | None = None) -> str:
+        content = full_story_text or candidate.chunk_text
+        page_start = 1 if full_story_text else candidate.page_start
+        page_end = candidate.page_count if full_story_text else candidate.page_end
         return "\n".join((
             f"title: {candidate.title}", f"author: {candidate.author}",
             f"illustrator: {candidate.illustrator}",
-            f"pages: {candidate.page_start}-{candidate.page_end} of {candidate.page_count}",
+            f"pages: {page_start}-{page_end} of {candidate.page_count}",
             f"content: {content}",
         ))

@@ -28,8 +28,11 @@ class FakePinecone:
         self.filters.append(metadata_filter)
         return [match("dense", 1)], [match("sparse", 1)]
 
-    def rerank(self, query, candidates):
+    def rerank(self, query, candidates, documents=None):
         return {"story": 0.9}
+
+    def rerank_documents(self, candidates):
+        return [{"id": candidate.story_id, "text": "complete story text"} for candidate in candidates]
 
 
 class SearchServiceTests(unittest.TestCase):
@@ -41,6 +44,23 @@ class SearchServiceTests(unittest.TestCase):
         self.assertIn("A Story", result.response)
         self.assertIn("It is funny.", result.response)
         self.assertIn("$and", pinecone.filters[0])
+
+    def test_debug_response_contains_pipeline_trace(self):
+        pinecone = FakePinecone()
+        service = RecommendationService(FakeGroq(), pinecone, 60, 20)
+
+        result = service.recommend_debug(RecommendationRequest(input="A short funny story"))
+
+        self.assertIn("What a fun story idea!", result.response.message)
+        self.assertFalse(result.response.analysis_fallback)
+        self.assertTrue(result.response.retrieval["length_filter_applied"])
+        self.assertTrue(result.response.retrieval["filter_relaxed"])
+        self.assertEqual(len(result.response.retrieval["attempts"]), 2)
+        self.assertEqual(result.response.fusion["rerank_candidates"][0].story_id, "story")
+        self.assertTrue(result.response.reranking["applied"])
+        self.assertEqual(result.response.reranking["documents"][0]["text"], "complete story text")
+        self.assertEqual(result.response.finalization["top_five"][0].rerank_score, 0.9)
+        self.assertFalse(result.response.finalization["writing_fallback"])
 
 
 if __name__ == "__main__":

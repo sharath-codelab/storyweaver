@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -51,6 +51,22 @@ class Recommendation(BaseModel):
 
 class RecommendationResponse(BaseModel):
     response: str
+
+
+class DebugRecommendationPayload(BaseModel):
+    """Full, intentionally verbose trace of one recommendation request."""
+
+    message: str
+    analysis: QueryAnalysis
+    analysis_fallback: bool
+    retrieval: dict[str, Any]
+    fusion: dict[str, Any]
+    reranking: dict[str, Any]
+    finalization: dict[str, Any]
+
+
+class DebugRecommendationResponse(BaseModel):
+    response: DebugRecommendationPayload
 
 
 class ChunkMatch(BaseModel):

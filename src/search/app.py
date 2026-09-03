@@ -12,7 +12,7 @@ from fastapi.concurrency import run_in_threadpool
 from .config import SearchSettings
 from .groq_client import GroqService
 from .pinecone_client import PineconeSearch
-from .schemas import RecommendationRequest, RecommendationResponse
+from .schemas import DebugRecommendationResponse, RecommendationRequest, RecommendationResponse
 from .service import RecommendationService
 
 
@@ -42,5 +42,10 @@ def create_app(project_root: Path | None = None) -> FastAPI:
     @app.post("/v1/story-recommendations", response_model=RecommendationResponse)
     async def recommend(request: RecommendationRequest, raw_request: Request) -> RecommendationResponse:
         return await run_in_threadpool(raw_request.app.state.service.recommend, request)
+
+    @app.post("/v1/story-recommendations/debug", response_model=DebugRecommendationResponse)
+    async def recommend_debug(request: RecommendationRequest, raw_request: Request) -> DebugRecommendationResponse:
+        """Unprotected diagnostic route; response includes complete rerank story text."""
+        return await run_in_threadpool(raw_request.app.state.service.recommend_debug, request)
 
     return app

@@ -218,7 +218,8 @@ dense rank, sparse rank, then ID as deterministic tiebreakers.
 
 1. Group fused chunks by `story_id`.
 2. Keep the highest-RRF chunk as each story's primary content passage.
-3. Retain up to 20 distinct stories for reranking.
+3. Retain up to 20 distinct stories for reranking. Keep the primary chunk as a
+   fallback, then load each selected story's complete canonical source text.
 4. Preserve title, credits, page count, character count, primary chunk text,
    page range, RRF score, and first-stage ranks.
 
@@ -235,16 +236,16 @@ For every candidate story, create exactly one document:
 title: <display_title>
 author: <author_credit_raw>
 illustrator: <illustrator_credit_raw>
-pages: <page_start>-<page_end> of <page_count>
-content: <primary_chunk_text>
+pages: 1-<page_count> of <page_count>
+content: <entire_story_text>
 ```
 
-This means the cross-encoder compares the user's query with the actual
-retrieved story content as well as its title and credits. It does not rank by
-title alone.
+This means the cross-encoder compares the user's query with the entire story
+as well as its title and credits. It does not rank by title alone. If the local
+source is unavailable or invalid, use the retrieved primary chunk instead.
 
-Preserve title and credit fields, then truncate content at a sentence boundary
-to respect the selected reranker’s documented input limit.
+Preserve title, credit fields, and the complete source story; the reranker
+provider applies its model-specific input handling.
 
 ### Step 12. Call Pinecone reranking
 

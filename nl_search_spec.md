@@ -29,9 +29,24 @@ The public response has exactly one field, named `response`:
 `response` starts with one short, welcoming librarian-style sentence that
 acknowledges the child's request, followed by one or two child-friendly
 recommendation lines. Each names a real selected story and explains in simple
-language why it matches the child's request. Contributor details, counts, page
-ranges, filter state, and reranking diagnostics remain internal; never expose
-vector values, secrets, prompts, or model reasoning.
+language why it matches the child's request. On this normal endpoint,
+contributor details, counts, page ranges, filter state, and reranking
+diagnostics remain internal; never expose vector values, secrets, prompts, or
+model reasoning.
+
+## Debug endpoint
+
+```text
+POST /v1/story-recommendations/debug
+```
+
+This unprotected diagnostic endpoint accepts the same request body, but returns
+an object in its `response` field. It contains the normalized query analysis,
+every dense/sparse retrieval attempt and filter, fused candidates, the exact
+full-story (or chunk-fallback) documents sent to reranking, reranking scores,
+and final writing selections/fallback state. It is intentionally verbose and
+may return large response bodies. It must never expose embeddings, provider
+prompts, API keys, or other secrets.
 
 ## Request flow
 
@@ -121,26 +136,29 @@ score = Σ 1 / (k + rank_in_list)
 
 Then group chunks by `story_id`, keep the highest-RRF passage as each story's
 primary candidate, and retain at most 20 distinct stories. Break ties by dense
-rank, sparse rank, then story ID. Keep the primary chunk's page range and text.
+rank, sparse rank, then story ID. Keep the primary chunk's page range and text
+for fallback and recommendation writing.
 
 ## 5. Rerank with Pinecone
 
-Call Pinecone's reranking API with the original normalized query and one
-document per candidate story:
+Before calling Pinecone's reranking API, load each candidate's complete
+canonical story from the local corpus. Call the API with the original normalized
+query and one document per candidate story:
 
 ```text
 title: <display_title>
 author: <author_credit_raw>
 illustrator: <illustrator_credit_raw>
-pages: <page_start>-<page_end> of <page_count>
-content: <chunk_text>
+pages: 1-<page_count> of <page_count>
+content: <entire_story_text>
 ```
 
-Use a configured cross-encoder model. Preserve title and credits, then truncate
-content at a sentence boundary to meet the documented query-plus-document token
-limit. Sort by reranker score; use RRF only as a tiebreaker. Keep the top five
-distinct stories internally. If reranking fails or times out, retain RRF order
-and record `rerank_applied: false`.
+Use a configured cross-encoder model. Preserve title, credits, and the full
+story text; let the configured provider apply its documented input handling.
+If a source story is unavailable or invalid, use the retrieved chunk as a
+grounded fallback. Sort by reranker score; use RRF only as a tiebreaker. Keep
+the top five distinct stories internally. If reranking fails or times out,
+retain RRF order and record `rerank_applied: false`.
 
 ## 6. Write recommendations with Groq
 
