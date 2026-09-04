@@ -12,6 +12,8 @@ services:
         sync: false
       - key: GROQ_API_KEY
         sync: false
+      - key: CHAT_API_TOKEN
+        sync: false
       - key: CALIBRATE_API_KEY
         sync: false
       - key: CALIBRATE_AGENT_ID

@@ -9,7 +9,9 @@ from .pinecone_client import PineconeSearch
 from .schemas import (
     DebugRecommendationPayload,
     DebugRecommendationResponse,
+    ChatStoryCandidate,
     QueryAnalysis,
+    Recommendation,
     RecommendationRequest,
     RecommendationResponse,
 )
@@ -17,7 +19,6 @@ from .schemas import (
 LENGTH_RANGES = {
     "very_short": (0, 1000), "short": (1000, 5000), "medium": (5000, 12000), "long": (12000, 25001),
 }
-
 
 class RecommendationService:
     def __init__(self, groq: GroqService, pinecone: PineconeSearch, rrf_k: int, rerank_candidate_count: int):
@@ -34,8 +35,48 @@ class RecommendationService:
         message, trace = self._recommend(request, include_debug=True)
         return DebugRecommendationResponse(response=DebugRecommendationPayload(message=message, **trace))
 
-    def _recommend(self, request: RecommendationRequest, include_debug: bool) -> tuple[str, dict]:
-        analysis, analysis_fallback = self._analysis(request.input)
+    def candidates_for_agent(self, request_text: str) -> list[ChatStoryCandidate]:
+        """Return only grounded candidate fields for PydanticAI's search tool.
+
+        This deliberately uses the same retrieval rules as the legacy endpoint.
+        The agent gets short excerpts, never provider payloads or debug traces.
+        """
+        request = RecommendationRequest(input=request_text)
+        analysis, _ = self._analysis(request.input)
+        count_range = self._length_range(analysis)
+        metadata_filter = self._filter("en", count_range)
+        dense, sparse = self.pinecone.retrieve(analysis.search_query, metadata_filter)
+        candidates = fuse_chunks(dense, sparse, self.rrf_k)
+        if count_range and len(candidates) < 5:
+            dense, sparse = self.pinecone.retrieve(analysis.search_query, self._filter("en", None))
+            candidates = fuse_chunks(dense, sparse, self.rrf_k)
+        candidates = candidates[: self.rerank_candidate_count]
+        try:
+            scores = self.pinecone.rerank(request.input, candidates)
+            candidates = [candidate.model_copy(update={"rerank_score": scores.get(candidate.story_id)}) for candidate in candidates]
+            candidates = rerank_order(candidates)
+        except Exception:
+            # Search remains useful in reciprocal-rank order if reranking fails.
+            pass
+        return [
+            ChatStoryCandidate(
+                story_id=candidate.story_id,
+                title=candidate.title,
+                author=candidate.author,
+                illustrator=candidate.illustrator,
+                page_count=candidate.page_count,
+                excerpt=candidate.chunk_text[:1200],
+            )
+            for candidate in candidates[:5]
+        ]
+
+    def _recommend(
+        self, request: RecommendationRequest, include_debug: bool,
+        analysis: QueryAnalysis | None = None,
+    ) -> tuple[str, dict]:
+        analysis_fallback = analysis is None
+        if analysis is None:
+            analysis, analysis_fallback = self._analysis(request.input)
         count_range = self._length_range(analysis)
         metadata_filter = self._filter("en", count_range)
         dense, sparse = self.pinecone.retrieve(analysis.search_query, metadata_filter)
@@ -124,8 +165,12 @@ class RecommendationService:
             selected = []
             for choice in written.selections:
                 candidate = by_id.get(choice.story_id)
-                if candidate and all(item.story_id != choice.story_id for item in selected):
-                    selected.append(recommendation_from_candidate(candidate, choice.why_recommended))
+                title = candidate.title if candidate else choice.story_id
+                if all(item.title != title for item in selected):
+                    selected.append(Recommendation(
+                        title=title,
+                        line=f"{title} — {choice.why_recommended}",
+                    ))
                 if len(selected) == limit:
                     break
             if selected:

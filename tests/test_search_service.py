@@ -35,6 +35,14 @@ class FakePinecone:
         return [{"id": candidate.story_id, "text": "complete story text"} for candidate in candidates]
 
 
+class UnmatchedChoiceGroq(FakeGroq):
+    def write(self, query, candidates, limit):
+        return WritingResult(
+            introduction="I found a special pick!",
+            selections=[WritingChoice(story_id="model-selected-story", why_recommended="It has a magical treasure hunt.")],
+        )
+
+
 class SearchServiceTests(unittest.TestCase):
     def test_returns_grounded_recommendation(self):
         pinecone = FakePinecone()
@@ -61,6 +69,23 @@ class SearchServiceTests(unittest.TestCase):
         self.assertEqual(result.response.reranking["documents"][0]["text"], "complete story text")
         self.assertEqual(result.response.finalization["top_five"][0].rerank_score, 0.9)
         self.assertFalse(result.response.finalization["writing_fallback"])
+
+    def test_agent_candidates_are_grounded_and_limited(self):
+        service = RecommendationService(FakeGroq(), FakePinecone(), 60, 20)
+
+        candidates = service.candidates_for_agent("A short funny story")
+
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0].story_id, "story")
+        self.assertEqual(candidates[0].title, "A Story")
+        self.assertEqual(candidates[0].excerpt, "A funny animal adventure.")
+
+    def test_uses_groq_selection_without_candidate_id_validation(self):
+        service = RecommendationService(UnmatchedChoiceGroq(), FakePinecone(), 60, 20)
+
+        result = service.recommend(RecommendationRequest(input="A short adventure"))
+
+        self.assertIn("model-selected-story — It has a magical treasure hunt.", result.response)
 
 
 if __name__ == "__main__":

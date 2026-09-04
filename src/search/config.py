@@ -29,6 +29,7 @@ class SearchSettings:
     groq_api_key: str
     groq_analysis_model: str
     groq_writing_model: str
+    chat_api_token: str
     pinecone_rerank_model: str
     dense_top_k: int
     sparse_top_k: int
@@ -44,11 +45,15 @@ class SearchSettings:
         groq_key = os.getenv("GROQ_API_KEY", "").strip()
         if not groq_key:
             raise ConfigurationError("Missing required environment variable: GROQ_API_KEY")
+        chat_api_token = os.getenv("CHAT_API_TOKEN", "").strip()
+        if not chat_api_token:
+            raise ConfigurationError("Missing required environment variable: CHAT_API_TOKEN")
         return cls(
             ingestion=Settings.from_environment(project_root),
             groq_api_key=groq_key,
             groq_analysis_model=os.getenv("GROQ_ANALYSIS_MODEL", "openai/gpt-oss-20b"),
             groq_writing_model=os.getenv("GROQ_WRITING_MODEL", "openai/gpt-oss-20b"),
+            chat_api_token=chat_api_token,
             pinecone_rerank_model=os.getenv("PINECONE_RERANK_MODEL", "bge-reranker-v2-m3"),
             dense_top_k=_positive_int("DENSE_TOP_K", 50),
             sparse_top_k=_positive_int("SPARSE_TOP_K", 50),
